@@ -1,0 +1,236 @@
+// -----------------------
+// Silvia Takahashi
+// UNIVERSIDAD DE LOS ANDES
+//  Coder - Decoder
+//   Coder: 
+// -----------------------
+// Diego Alejandro Munevar Perez - 202322221
+// Juan Sebastian Avila Nivia - 202320465
+
+using gold.**
+
+
+procedure main(args:String[]) begin
+	var sc:java.util.Scanner(System.$in)
+    coder:=createCoder()
+   	deCoder:=createDecoder()
+    
+    
+    //GAutomataFrame.show(coder)
+    //GAutomataFrame.show(deCoder)
+   
+ 	
+  Utilities.testCodeDecode (coder, deCoder)
+		
+end
+
+function createCoder():ITransducer begin
+	
+	estados1:=('a'‥'z')× (0‥14) × (0‥4) //Primera letra, # Contador letras palabra y longitud cadena, Contador palabras leidas
+	estados3:= {'F'}×(0‥14)// Estados finales
+	estados2:= {'I', 'R'}  //Inicial, Rechazo
+	estados4:= {' '}×(0‥14)×(0‥4) //Estados de reinicio
+	estados:= estados1 ∪ estados2 ∪ estados3 ∪ estados4
+	input:= ('a'‥'z')∪{' ','.'}
+	output:= input ∪ {'0','1','2','3','4','.'} 
+	inicial:= 'I'
+	finales:= {'F'}×(0‥14)
+	coder = GDeterministicTransducer(estados,input,output,inicial,finales,transicionCoder,printEstadosCoder,printFlechaCoder)
+	return coder
+end
+
+function transicionCoder(estado, simbolo) begin
+	if estado='I' and simbolo∈{' ','.'} then // Si esta en el inicio y lee un espacio, es inmediatamente invalido
+		return 'R'
+	elseif estado='R' then //Si esta en estado de rechazo, mantenerse allí
+		return 'R'
+	end	
+	
+	if estado='I' then //Si esta en estado inicial 
+		if simbolo∉{' ', '.'} then //Si es una letra
+			return ⟨simbolo,(1)%15,(1)%5⟩ //Se declara que se ha leido una letra y se ha empezado a leer la primera palabra
+		elseif simbolo='.' then //Si es un punto, mandarlo al estado de rechazo
+			return 'R'
+		end
+	elseif estado[0]='F' and simbolo∈{'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', ' ','.'} then //Si se lee otra cadena despues de terminar, es invalido.
+		//Si ha llegado al final y lee un simbolo, la cadena es inmediatamente invalida.
+		return 'R'	
+	elseif estado[0]='F' then //Si esta en el estado final, se mantiene allí
+		return 'F'
+	elseif estado[0]∈('a'‥'z') then //Si esta en el estado de una letra
+		if simbolo∉{' ', '.'} then //Si es una letra
+			return ⟨estado[0],(estado[1]+1)%15,(estado[2])%5⟩
+		elseif simbolo=' ' then //Si es un espacio, aumentar la cantidad de palabras y reiniciar la cantidad de letras y len cadena
+			return ⟨simbolo,(estado[1])%15,(estado[2])%5⟩
+		elseif simbolo='.' then //Si es un punto, mandarlo al estado final
+			return ⟨'F',((estado[1])+estado[2])%5⟩
+		end
+	elseif estado[0]=' ' and simbolo∈{' ', '.'} then
+		return 'R'
+	elseif estado[0]=' ' and simbolo ∈ ('a'‥'z')then
+		return ⟨simbolo,1%15,(estado[2]+1)%5⟩
+	end
+end
+
+function printEstadosCoder(estado) begin
+	if estado∈{'R','I'} then
+		return λ
+	elseif estado[0]=' ' then
+		return(Integer.parseInt((estado[1]+(estado[2]))%5))
+	elseif estado[0]='F' then 
+		numero :=Integer.parseInt((estado[1])%5)
+		return String.valueOf(Integer.parseInt(numero))+'.'
+	else
+		return λ
+	end
+end
+function printFlechaCoder(estado,simbolo) begin
+	if estado∈{'F','R'} then
+		return λ
+	end
+	if estado='I' then
+		return simbolo
+	end
+	if estado[0]=' ' and simbolo ∈ ('a'‥'z')then
+		return simbolo
+	end
+	if simbolo∈('a'‥'z') and estado[0]!=' ' then
+		if simbolo=estado[0] then
+			return (estado[1]+1)%3
+		else
+			return simbolo
+		end
+			
+	elseif estado[0]∈('a'‥'z') and (simbolo=' ' or simbolo='.') then
+		return estado[0]
+	else
+		return λ
+	end
+end
+
+
+function createDecoder():ITransducer begin
+	estados1:=('a'‥'z')× (0‥14) × (0‥4)//Primera letra, # Contador letras palabra y longitud cadena, Contador palabras leidas
+	estados3:= {' '} ×(0‥4)// Estados Espacio
+	estados2:= {'I', 'R', 'F'}  //Inicial, Rechazo, Final
+	estados4:= {'T'} × (0‥14) × (0‥4) //Transicion de numeros
+	estados:= estados1 ∪ estados2 ∪ estados3 ∪ estados4
+	input:= ('a'‥'z')∪{'0','1','2','3','4','.', ' '} 
+	print(input)
+	output:= input ∪ {'.',' '}
+	inicial:= 'I'
+	finales:= {'F'}
+	decoder = GDeterministicTransducer(estados,input,output,inicial,finales,transicionDeCoder,printEstadosDeCoder,printFlechaDeCoder)
+	return 	decoder
+end
+	
+function transicionDeCoder(estado, simbolo) begin
+	//Casos de rechazo directo
+	if estado='I' and simbolo ∈ {' ','.'} then
+		return 'R'
+	elseif estado='R' then
+		return 'R'
+	elseif estado='F' and simbolo ∈ ('a'‥'z') ∪ {'.',' '} ∪ ('0'‥'5') then
+		return 'R'
+	end	
+	
+	if estado='I' then //Si esta en estado inicial 
+		if simbolo∉{'0','1','2','3','4','.'} then //Si es una letra
+			return ⟨simbolo,(1)%15,(1)%5⟩ //Se declara que se ha leido una letra y se ha empezado a leer la primera palabra
+		else
+			return 'R'
+		end
+		
+	elseif estado[0]∈('a'‥'z') then //Si esta en el estado de una letra
+		if simbolo ∈ ('a'‥'z') then // Si el simbolo es una letra
+			if estado[0]!=simbolo then // Si el simbolo actual es diferente a la letra
+				return ⟨estado[0],(estado[1]+1)%15,(estado[2])%5⟩ // Aumentar la cantidad de letras
+			else
+				return ⟨'T',(estado[1])%15,(estado[2]+1)%5⟩ // Pasar a un estado de transicion (Termino la palabra)
+			end
+		elseif simbolo ∈ ('0'‥'5') then // Si el simbolo es un numero
+			if Integer.parseInt(String.valueOf(simbolo))=(estado[1]+1)%3 then //Si el numero es igual al estado +1 (puesto que es mayor a aquel actual)
+				return ⟨estado[0],(estado[1]+1)%15,(estado[2])%5⟩ // Es valido
+			else
+				return 'R' // No es valido
+			end
+		elseif simbolo=' ' then // Si se encuentra un espacio, no es valido
+			return 'R'
+		elseif simbolo='.' then // Si es un punto, se llego al final de la cadena
+			return 'F'
+		end
+	elseif estado[0]='T' then //Si esta en estado de transicion
+		if simbolo∈('a'‥'z') then // Si el simbolo es letra, se rechaza
+			return 'R'
+		elseif simbolo ∈{'.', ' '} then // Si el simbolo es espacio o punto, se rechaza
+			return 'R'
+		elseif Integer.parseInt(String.valueOf(simbolo))=((estado[1])%5+estado[2]-1)%5 then //Si el simbolo actual es = a la cantidad actual -1 (Puesto que hay 1 caracter mas)
+			return ⟨' ', (estado[2])%5⟩
+		else //Se rechaza
+			 return 'R'
+		end
+	elseif estado[0]=' ' then //Si el estado es una nueva palabra
+		if simbolo ∈ ('a'‥'z') then //Si es una nueva letra
+			return ⟨simbolo,1%15,(estado[1])%5⟩
+		elseif simbolo ∈ ('0'‥'5') then //Continuacion de funcion de transicion
+			if Integer.parseInt(String.valueOf(simbolo))!=(estado[1])%5 then //Longitud + cantidad de letras
+				return 'R'
+			else
+				return 'F'
+			end
+		elseif simbolo='.' then //Si es un punto, se ha llegado al final
+			return 'F'
+		else
+			return 'R'
+		end
+	end
+end
+
+function printEstadosDeCoder(estado) begin
+	if estado='F' then //Si es Final, se imprime el punto
+		return '.'
+	else
+		return λ
+	end
+end
+function printFlechaDeCoder(estado,simbolo) begin
+	
+	if estado='I' and simbolo ∈ ('a'‥'z') then
+		return simbolo
+	elseif estado∈{'F','R'}  then //No se imprime nada
+		return λ
+	elseif estado='I' and simbolo ∈('0'‥'5') ∪ {' ','.'} then // No se imprime nada (Rechazo)
+		return λ
+	end
+	
+	if estado[0]∈('a'‥'z') then //Si el estado es una letra
+		if simbolo∈('a'‥'z') then // Si el simbolo es una letra
+			if simbolo=estado[0] then //Si el simbolo es igual a la letra, es invalido
+				return λ
+			else // Se imprime el simbolo diferente al estado
+				return simbolo
+			end
+		elseif simbolo ∈ ('0'‥'5') then // Si es un numero
+			if Integer.parseInt(String.valueOf(simbolo))=(estado[1]+1)%3 then
+				return estado[0] // Si el estado es igual al simbolo, se imprime el valor 
+			else
+				return λ //Si el estado es diferente, invalido
+			end
+		elseif simbolo=' ' then //Invalido
+			return λ
+		elseif simbolo='.' then // Invalido
+			return '.'
+		end
+	elseif estado[0]='T' then //Dado a que es transicion, no se imprime el simbolo 
+		return λ
+	
+	elseif estado[0]=' ' then // Si es una nueva palabra
+		if simbolo∈('a'‥'z') then // Si es una letra
+			return ' '+String.valueOf(simbolo) // Se imprime el espacio y la nueva letra
+		else 
+			return λ // Invalido
+		end
+	else
+		return λ // Invalido
+	end
+end
